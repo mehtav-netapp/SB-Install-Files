@@ -256,53 +256,52 @@ configure_replicaset()
 }
 
 #############################################################################
-configure_mongodb()
+configure_mongodb() 
 {
-	log "Configuring MongoDB"
+ log "Configuring MongoDB"
 
-#	sudo mkdir -p "/data"
-#	sudo mkdir "/data/log"
-#	sudo mkdir "/data/db"
-#
-#	sudo chown -R mongodb:mongodb "/data/db"
-#	sudo chown -R mongodb:mongodb "/data/log"
-#	sudo chmod 755 "/data"
+ mkdir -p "data"
+ mkdir "data/log"
+ mkdir "data/db"
+	
+ chown -R mongodb:mongodb "data/db"
+ chown -R mongodb:mongodb "data/log"
+ chmod 755 "data"
 	
 	tee /etc/mongod.conf > /dev/null <<EOF
-storage:
-  dbPath: /var/lib/mongodb
-  journal:
-    enabled: true
-#  engine:
-#  mmapv1:
-#  wiredTiger:
-
-# where to write logging data.
 systemLog:
-  destination: file
-  logAppend: true
-  path: /var/log/mongodb/mongod.log
-
-# network interfaces
+    destination: file
+    path: "data/log/mongod.log"
+    quiet: true
+    logAppend: true
+processManagement:
+    fork: true
+    pidFilePath: "/var/run/mongodb/mongod.pid"
 net:
-    bindIp: 0.0.0.0
-    port: $MONGODB_PORT
-    ssl:
+  bindIpAll: true
+  port: $MONGODB_PORT
+  ssl:
      mode: requireSSL
      PEMKeyFile: /home/administrator1/platform-certs/mongodb.pem
      CAFile: /home/administrator1/platform-certs/ca-fullchain.pem
      disabledProtocols: TLS1_0,TLS1_1
      allowInvalidHostnames: true
-     allowConnectionsWithoutCertificates: true
+     allowConnectionsWithoutCertificates: false
+security:
+    #keyFile: ""
+    authorization: "disabled"
+storage:
+    dbPath: "data/db"
+    directoryPerDB: true
+    journal:
+        enabled: $JOURNAL_ENABLED
 #replication:
     #replSetName: "$REPLICA_SET_NAME"
 EOF
 
 	# Fixing an issue where the mongod will not start after reboot where when /run is tmpfs the /var/run/mongodb directory will be deleted at reboot
 	# After reboot, mongod wouldn't start since the pidFilePath is defined as /var/run/mongodb/mongod.pid in the configuration and path doesn't exist
-#	sudo sed -i "s|pre-start script|pre-start script\n  if [ ! -d /var/run/mongodb ]; then\n    mkdir -p /var/run/mongodb \&\& touch /var/run/mongodb/mongod.pid \&\& chmod 777 /var/run/mongodb/mongod.pid \&\& chown mongodb:mongodb /var/run/mongodb/mongod.pid\n  fi\n|" /etc/init/mongod.conf
-
-
+	sed -i "s|pre-start script|pre-start script\n  if [ ! -d /var/run/mongodb ]; then\n    mkdir -p /var/run/mongodb \&\& touch /var/run/mongodb/mongod.pid \&\& chmod 777 /var/run/mongodb/mongod.pid \&\& chown mongodb:mongodb /var/run/mongodb/mongod.pid\n  fi\n|" /etc/init/mongod.conf
 }
 
 start_mongodb()
